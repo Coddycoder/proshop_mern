@@ -1,40 +1,74 @@
 import asyncHandler from 'express-async-handler'
 import Order from '../models/orderModel.js'
+import Product from '../models/productModel.js'
+
+const FREE_SHIPPING_THRESHOLD = 100
+const FLAT_SHIPPING_PRICE = 100
+const TAX_RATE = 0.15
+
+const round2 = (n) => Math.round(n * 100) / 100
+
+const calcPrices = (items) => {
+  const itemsPrice = round2(
+    items.reduce((acc, i) => acc + i.price * i.qty, 0)
+  )
+  const shippingPrice =
+    itemsPrice > FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_PRICE
+  const taxPrice = round2(itemsPrice * TAX_RATE)
+  const totalPrice = round2(itemsPrice + shippingPrice + taxPrice)
+  return { itemsPrice, shippingPrice, taxPrice, totalPrice }
+}
 
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
 const addOrderItems = asyncHandler(async (req, res) => {
-  const {
+  const { orderItems: requestedItems, shippingAddress, paymentMethod } = req.body
+
+  if (!requestedItems || requestedItems.length === 0) {
+    res.status(400)
+    throw new Error('No order items')
+  }
+
+  const dbProducts = await Product.find({
+    _id: { $in: requestedItems.map((i) => i.product) },
+  })
+
+  const orderItems = requestedItems.map((reqItem) => {
+    const dbProduct = dbProducts.find(
+      (p) => p._id.toString() === reqItem.product.toString()
+    )
+    if (!dbProduct) {
+      res.status(400)
+      throw new Error(`Product not found: ${reqItem.product}`)
+    }
+    return {
+      name: dbProduct.name,
+      qty: Number(reqItem.qty),
+      image: dbProduct.image,
+      price: dbProduct.price,
+      product: dbProduct._id,
+    }
+  })
+
+  const { itemsPrice, shippingPrice, taxPrice, totalPrice } = calcPrices(
+    orderItems
+  )
+
+  const order = new Order({
     orderItems,
+    user: req.user._id,
     shippingAddress,
     paymentMethod,
     itemsPrice,
     taxPrice,
     shippingPrice,
     totalPrice,
-  } = req.body
+  })
 
-  if (orderItems && orderItems.length === 0) {
-    res.status(400)
-    throw new Error('No order items')
-    return
-  } else {
-    const order = new Order({
-      orderItems,
-      user: req.user._id,
-      shippingAddress,
-      paymentMethod,
-      itemsPrice,
-      taxPrice,
-      shippingPrice,
-      totalPrice,
-    })
+  const createdOrder = await order.save()
 
-    const createdOrder = await order.save()
-
-    res.status(201).json(createdOrder)
-  }
+  res.status(201).json(createdOrder)
 })
 
 // @desc    Get order by ID
