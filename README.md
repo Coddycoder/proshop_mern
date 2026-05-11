@@ -127,6 +127,32 @@ In development the React dev server (`:3000`) proxies API calls to the backend (
 
 Product images posted to `POST /api/upload` are written to the `uploads/` directory at the repo root by `backend/routes/uploadRoutes.js` and served back at `/uploads/...`. Only `jpg`, `jpeg`, and `png` files are accepted. The directory is committed so a fresh clone works out of the box. Note: on hosts with ephemeral filesystems (e.g. Heroku) uploaded files do not persist across dyno restarts — use object storage in production if uploads matter.
 
+### Feature Flags (Module 3 — MCP)
+
+`backend/features.json` is the source of truth for 25 product feature flags. Backend exposes them at:
+
+- `GET /api/feature-flags` — full map of all flags.
+- `GET /api/feature-flags/:name` — one flag (404 on missing).
+
+Both endpoints re-read the file on every request, so writes from the MCP server are visible without a backend restart.
+
+Admins see the live state at `/admin/feature-flags` (`Admin → Dashboard Features` in the navbar). The screen fetches the REST endpoint above; there is **no direct file read from the frontend**.
+
+The MCP server that mutates `backend/features.json` lives at `mcp-servers/feature-flags/` (Python FastMCP, managed by `uv`). Project-level config is at `.mcp.json` in the repo root.
+
+```bash
+# One-off dependency install
+cd mcp-servers/feature-flags && uv sync
+
+# Smoke-test scenario (the same one logged in report.md / ## M3)
+uv run python run_search_v2_scenario.py
+
+# Direct stdio launch (Claude Code does this automatically via .mcp.json)
+uv run python server.py
+```
+
+Tools exposed by the server: `list_features`, `get_feature_info`, `set_feature_state`, `adjust_traffic_rollout`. Contract and validation rules are documented in `aidev-course-materials/M3/project-data/feature-flags-spec.md` and in each tool's docstring inside `server.py`.
+
 ## Build & Deploy
 
 ### Heroku

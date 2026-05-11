@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "feature-flags": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/coddy/Projects/hss/ai-course/proshop_mern/mcp-servers/feature-flags",
+        "run",
+        "python",
+        "server.py"
+      ]
+    }
+  }
+}

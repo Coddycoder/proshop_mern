@@ -24,3 +24,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .vscode/settings.json
+
+# Python (MCP servers managed by uv)
+__pycache__/
+*.py[cod]
+.venv/
+mcp-servers/**/.venv/
