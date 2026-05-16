@@ -1,0 +1,10 @@
+[project]
+name = "rag"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "qdrant-client>=1.18.0",
+    "sentence-transformers>=5.5.0",
+    "tqdm>=4.67.3",
+]

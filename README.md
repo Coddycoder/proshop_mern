@@ -197,6 +197,13 @@ jane@example.com (Customer)
 ```
 
 
+## Project docs and RAG corpus
+
+Course-supplied reference material lives in [`docs/project-data/`](docs/project-data/) — 47 markdown files covering architecture, ADRs, API reference, feature specs, pages, runbooks and incident postmortems. Use it as a knowledge base; do **not** treat it as application source code.
+
+For vector-DB ingestion, the corpus has been pre-chunked into [`docs/chunks.jsonl`](docs/chunks.jsonl) (471 chunks, JSON-per-line, semantic splitting on markdown headings). The chunking rules and metadata schema are documented in [`docs/chunking-spec.md`](docs/chunking-spec.md); a run-level breakdown (per-kind counts, oversize/undersize chunks, anomalies) is in [`docs/report.md`](docs/report.md).
+
+
 ## License
 
 The MIT License
