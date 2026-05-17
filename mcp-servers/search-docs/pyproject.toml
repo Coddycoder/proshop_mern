@@ -1,0 +1,18 @@
+[project]
+name = "proshop-search-docs-mcp"
+version = "0.1.0"
+description = "FastMCP server exposing proshop_mern doc search (Qdrant + BGE-M3) as a single tool"
+requires-python = ">=3.14"
+dependencies = [
+    "fastmcp>=2.0.0",
+    "qdrant-client>=1.18.0",
+    "sentence-transformers>=5.5.0",
+    "tqdm>=4.67.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

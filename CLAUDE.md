@@ -110,6 +110,27 @@ Do **not** auto-fix problems outside the project itself: do not kill processes, 
 
 It is fine — and expected — to fix issues inside the repo (`.env`, `package.json`, source code, ports referenced in config). The line is "user's machine vs. project's repo": project-side fixes are mine to apply when asked; system-side fixes are theirs.
 
+## MCP servers wired in this repo
+
+Two MCP servers are registered in `.mcp.json` (project-level). When working in this repo, **prefer the MCP tools below over reading the underlying files directly** — they exist precisely so you don't grep your way through `docs/project-data/` or hand-edit `backend/features.json`.
+
+### Search-docs MCP — `proshop_mern` documentation lookup
+
+Tool: `search_project_docs(query, top_k=5, kind=None)`. Backed by Qdrant collection `proshop_docs` (471 chunks, BGE-M3 embeddings) over `docs/project-data/` (architecture, ADRs, features, API, runbooks, incidents, glossary, dev history, best-practices, UI pages).
+
+- For ANY question about how the `proshop_mern` product works — features, architecture, ADRs, runbooks, incidents, API endpoints, dev history, glossary — you MUST call `search_project_docs` FIRST.
+- Use `kind=` when the answer category is obvious (`adr` for "why did we pick X", `incident` for postmortem questions, `spec` for feature-flag contract, etc.).
+- Only fall back to `Grep` + `Read` on `docs/project-data/` when (a) vector search returns nothing relevant in top-K, or (b) you need the full file contents and already know the path from the `file_path` field of a hit.
+- Do **not** start with `Grep`/`Read` of `docs/project-data/` for documentation questions — it is slower and burns tokens compared to a single MCP call.
+
+### Feature-flags MCP — `proshop_mern` feature flag runtime
+
+Tools: `list_features`, `get_feature_info`, `set_feature_state`, `adjust_traffic_rollout`. Backed by `backend/features.json` (atomic writes).
+
+- When the user asks the status of a flag ("is `search_v2` on?", "what's the rollout of `gift_message`?") — call `get_feature_info`. Do not read `backend/features.json` directly.
+- When the user wants to list / overview flags ("which flags are in Testing?", "all flags") — call `list_features`. Do not `Grep`/`Read` the file.
+- When the user wants to change a flag ("enable X", "put Y in Testing", "set traffic to 25%") — call `set_feature_state` / `adjust_traffic_rollout`. **Never** edit `backend/features.json` via `Edit`/`Write` — the MCP enforces dependency validation and the `last_modified` field; manual edits bypass both and desync the Dashboard Features admin page.
+
 ## Deployment
 
 `Procfile` (`web: node backend/server.js`) and the `heroku-postbuild` script in the root `package.json` build the frontend on Heroku, after which `server.js`'s production branch serves it. No manual `npm run build` is needed before pushing to Heroku.

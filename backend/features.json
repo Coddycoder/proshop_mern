@@ -14,9 +14,9 @@
   "semantic_search": {
     "name": "Semantic Vector Search",
     "description": "Augments keyword search with embedding-based semantic similarity. Products are encoded at index time; queries are embedded at runtime and matched via cosine similarity. Requires search_v2 to be Enabled first. Significantly improves discovery for natural-language queries like 'good headphones for running'.",
-    "status": "Disabled",
-    "traffic_percentage": 0,
-    "last_modified": "2026-02-14",
+    "status": "Testing",
+    "traffic_percentage": 25,
+    "last_modified": "2026-05-17",
     "targeted_segments": [
       "internal"
     ],

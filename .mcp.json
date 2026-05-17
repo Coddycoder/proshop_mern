@@ -9,6 +9,16 @@
         "python",
         "server.py"
       ]
+    },
+    "search-docs": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/coddy/Projects/hss/ai-course/proshop_mern/mcp-servers/search-docs",
+        "run",
+        "python",
+        "server.py"
+      ]
     }
   }
 }
