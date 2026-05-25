@@ -19,7 +19,7 @@ from pathlib import Path
 
 import torch
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, PayloadSchemaType, PointStruct, VectorParams
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
@@ -74,7 +74,7 @@ def ensure_collection(client: QdrantClient, *, reset: bool) -> None:
             client.create_payload_index(
                 collection_name=COLLECTION,
                 field_name=field,
-                field_schema="keyword",
+                field_schema=PayloadSchemaType.KEYWORD,
             )
 
 

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { LinkContainer } from 'react-router-bootstrap'
-import { Table, Button, Row, Col } from 'react-bootstrap'
+import { Table, Button } from 'react-bootstrap'
 import { useDispatch, useSelector } from 'react-redux'
 import Message from '../components/Message'
 import Loader from '../components/Loader'
@@ -61,7 +61,7 @@ const ProductListScreen = ({ history, match }) => {
   ])
 
   const deleteHandler = (id) => {
-    if (window.confirm('Are you sure')) {
+    if (window.confirm('Delete this product? This cannot be undone.')) {
       dispatch(deleteProduct(id))
     }
   }
@@ -72,64 +72,121 @@ const ProductListScreen = ({ history, match }) => {
 
   return (
     <>
-      <Row className='align-items-center'>
-        <Col>
-          <h1>Products</h1>
-        </Col>
-        <Col className='text-right'>
-          <Button className='my-3' onClick={createProductHandler}>
-            <i className='fas fa-plus'></i> Create Product
-          </Button>
-        </Col>
-      </Row>
-      {loadingDelete && <Loader />}
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          gap: 16,
+          marginBottom: 24,
+          paddingBottom: 16,
+          borderBottom: '1px solid var(--border)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <span
+            style={{
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--muted)',
+              fontWeight: 500,
+            }}
+          >
+            Admin
+          </span>
+          <h1 style={{ marginTop: 4, marginBottom: 4 }}>Products</h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14, margin: 0 }}>
+            Manage catalog inventory, pricing, and details.
+          </p>
+        </div>
+        <Button onClick={createProductHandler}>
+          <i className='fas fa-plus' aria-hidden='true' /> New product
+        </Button>
+      </header>
+
+      {loadingDelete && <Loader inline label='Deleting' />}
       {errorDelete && <Message variant='danger'>{errorDelete}</Message>}
-      {loadingCreate && <Loader />}
+      {loadingCreate && <Loader inline label='Creating' />}
       {errorCreate && <Message variant='danger'>{errorCreate}</Message>}
+
       {loading ? (
         <Loader />
       ) : error ? (
         <Message variant='danger'>{error}</Message>
+      ) : !products || products.length === 0 ? (
+        <div className='ds-empty' role='status'>
+          <div className='ds-empty__icon' aria-hidden='true'>
+            <i className='fas fa-box' />
+          </div>
+          <div className='ds-empty__title'>No products yet</div>
+          <div className='ds-empty__message'>
+            Click "New product" to add the first item to the catalog.
+          </div>
+        </div>
       ) : (
         <>
-          <Table striped bordered hover responsive className='table-sm'>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>NAME</th>
-                <th>PRICE</th>
-                <th>CATEGORY</th>
-                <th>BRAND</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product._id}>
-                  <td>{product._id}</td>
-                  <td>{product.name}</td>
-                  <td>${product.price}</td>
-                  <td>{product.category}</td>
-                  <td>{product.brand}</td>
-                  <td>
-                    <LinkContainer to={`/admin/product/${product._id}/edit`}>
-                      <Button variant='light' className='btn-sm'>
-                        <i className='fas fa-edit'></i>
-                      </Button>
-                    </LinkContainer>
-                    <Button
-                      variant='danger'
-                      className='btn-sm'
-                      onClick={() => deleteHandler(product._id)}
-                    >
-                      <i className='fas fa-trash'></i>
-                    </Button>
-                  </td>
+          <div
+            style={{
+              backgroundColor: 'var(--card)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              overflow: 'hidden',
+            }}
+          >
+            <Table responsive className='mb-0'>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Price</th>
+                  <th>Category</th>
+                  <th>Brand</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-          <Paginate pages={pages} page={page} isAdmin={true} />
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product._id}>
+                    <td>
+                      <code style={{ fontSize: 12 }}>
+                        {product._id.substring(0, 10)}…
+                      </code>
+                    </td>
+                    <td>{product.name}</td>
+                    <td className='tabular-nums'>${product.price}</td>
+                    <td>{product.category}</td>
+                    <td>{product.brand}</td>
+                    <td>
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <LinkContainer to={`/admin/product/${product._id}/edit`}>
+                          <Button
+                            variant='secondary'
+                            className='btn-sm'
+                            aria-label={`Edit ${product.name}`}
+                          >
+                            <i className='fas fa-edit' aria-hidden='true' />
+                          </Button>
+                        </LinkContainer>
+                        <Button
+                          variant='danger'
+                          className='btn-sm'
+                          onClick={() => deleteHandler(product._id)}
+                          aria-label={`Delete ${product.name}`}
+                        >
+                          <i className='fas fa-trash' aria-hidden='true' />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+          <div style={{ marginTop: 24 }}>
+            <Paginate pages={pages} page={page} isAdmin={true} />
+          </div>
         </>
       )}
     </>

@@ -1,9 +1,55 @@
 import React, { useState } from 'react'
-import { Form, Button, Col } from 'react-bootstrap'
+import { Form, Button } from 'react-bootstrap'
 import { useDispatch, useSelector } from 'react-redux'
 import FormContainer from '../components/FormContainer'
 import CheckoutSteps from '../components/CheckoutSteps'
 import { savePaymentMethod } from '../actions/cartActions'
+
+const PaymentOption = ({ checked, onChange, label, description, icon }) => (
+  <label
+    style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 12,
+      padding: 16,
+      border: `1px solid ${checked ? 'var(--foreground)' : 'var(--border)'}`,
+      borderRadius: 'var(--radius-md)',
+      cursor: 'pointer',
+      backgroundColor: checked ? 'var(--card-alt)' : 'var(--card)',
+      transition: 'border-color 150ms ease, background-color 150ms ease',
+      marginBottom: 0,
+    }}
+  >
+    <input
+      type='radio'
+      name='paymentMethod'
+      checked={checked}
+      onChange={onChange}
+      style={{ marginTop: 4 }}
+      aria-label={label}
+    />
+    <span style={{ flex: 1 }}>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontWeight: 600,
+          fontSize: 14,
+          color: 'var(--foreground)',
+        }}
+      >
+        {icon && <i className={icon} aria-hidden='true' />}
+        {label}
+      </span>
+      {description && (
+        <span style={{ fontSize: 13, color: 'var(--muted)', display: 'block', marginTop: 4 }}>
+          {description}
+        </span>
+      )}
+    </span>
+  </label>
+)
 
 const PaymentScreen = ({ history }) => {
   const cart = useSelector((state) => state.cart)
@@ -24,38 +70,39 @@ const PaymentScreen = ({ history }) => {
   }
 
   return (
-    <FormContainer>
+    <>
       <CheckoutSteps step1 step2 step3 />
-      <h1>Payment Method</h1>
-      <Form onSubmit={submitHandler}>
-        <Form.Group>
-          <Form.Label as='legend'>Select Method</Form.Label>
-          <Col>
-            <Form.Check
-              type='radio'
-              label='PayPal or Credit Card'
-              id='PayPal'
-              name='paymentMethod'
-              value='PayPal'
-              checked
-              onChange={(e) => setPaymentMethod(e.target.value)}
-            ></Form.Check>
-            {/* <Form.Check
-              type='radio'
-              label='Stripe'
-              id='Stripe'
-              name='paymentMethod'
-              value='Stripe'
-              onChange={(e) => setPaymentMethod(e.target.value)}
-            ></Form.Check> */}
-          </Col>
-        </Form.Group>
+      <FormContainer>
+        <header style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, marginBottom: 4, padding: 0 }}>Payment method</h1>
+          <p style={{ fontSize: 14, color: 'var(--muted)', margin: 0 }}>
+            Choose how you’d like to pay for this order.
+          </p>
+        </header>
 
-        <Button type='submit' variant='primary'>
-          Continue
-        </Button>
-      </Form>
-    </FormContainer>
+        <Form onSubmit={submitHandler} className='ds-stack-md'>
+          <fieldset>
+            <legend className='sr-only'>Select payment method</legend>
+            <PaymentOption
+              checked={paymentMethod === 'PayPal'}
+              onChange={() => setPaymentMethod('PayPal')}
+              label='PayPal or credit card'
+              description='You’ll be redirected to PayPal to complete payment securely.'
+              icon='fab fa-cc-paypal'
+            />
+          </fieldset>
+
+          <Button type='submit' variant='primary' className='btn-block'>
+            Continue to review
+            <i
+              className='fas fa-arrow-right'
+              style={{ marginLeft: 8 }}
+              aria-hidden='true'
+            />
+          </Button>
+        </Form>
+      </FormContainer>
+    </>
   )
 }
 

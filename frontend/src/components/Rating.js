@@ -1,75 +1,46 @@
 import React from 'react'
 
+const Star = ({ filled, half, color }) => (
+  <span aria-hidden='true'>
+    <i
+      style={{ color }}
+      className={
+        filled ? 'fas fa-star' : half ? 'fas fa-star-half-alt' : 'far fa-star'
+      }
+    ></i>
+  </span>
+)
+
 const Rating = ({ value, text, color }) => {
+  const stars = [1, 2, 3, 4, 5].map((threshold) => ({
+    filled: value >= threshold,
+    half: value >= threshold - 0.5 && value < threshold,
+  }))
+
   return (
-    <div className='rating'>
-      <span>
-        <i
-          style={{ color }}
-          className={
-            value >= 1
-              ? 'fas fa-star'
-              : value >= 0.5
-              ? 'fas fa-star-half-alt'
-              : 'far fa-star'
-          }
-        ></i>
+    <div
+      className='rating'
+      role='img'
+      aria-label={`Rating: ${value} out of 5${text ? `, ${text}` : ''}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 13,
+      }}
+    >
+      <span style={{ display: 'inline-flex', gap: 2 }}>
+        {stars.map((s, i) => (
+          <Star key={i} filled={s.filled} half={s.half} color={color} />
+        ))}
       </span>
-      <span>
-        <i
-          style={{ color }}
-          className={
-            value >= 2
-              ? 'fas fa-star'
-              : value >= 1.5
-              ? 'fas fa-star-half-alt'
-              : 'far fa-star'
-          }
-        ></i>
-      </span>
-      <span>
-        <i
-          style={{ color }}
-          className={
-            value >= 3
-              ? 'fas fa-star'
-              : value >= 2.5
-              ? 'fas fa-star-half-alt'
-              : 'far fa-star'
-          }
-        ></i>
-      </span>
-      <span>
-        <i
-          style={{ color }}
-          className={
-            value >= 4
-              ? 'fas fa-star'
-              : value >= 3.5
-              ? 'fas fa-star-half-alt'
-              : 'far fa-star'
-          }
-        ></i>
-      </span>
-      <span>
-        <i
-          style={{ color }}
-          className={
-            value >= 5
-              ? 'fas fa-star'
-              : value >= 4.5
-              ? 'fas fa-star-half-alt'
-              : 'far fa-star'
-          }
-        ></i>
-      </span>
-      <span>{text && text}</span>
+      {text && <span style={{ color: 'var(--muted)' }}>{text}</span>}
     </div>
   )
 }
 
 Rating.defaultProps = {
-  color: '#f8e825',
+  color: '#EAB308',
 }
 
 export default Rating

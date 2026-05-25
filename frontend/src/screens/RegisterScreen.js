@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Form, Button, Row, Col } from 'react-bootstrap'
+import { Form, Button } from 'react-bootstrap'
 import { useDispatch, useSelector } from 'react-redux'
 import Message from '../components/Message'
 import Loader from '../components/Loader'
@@ -32,70 +32,92 @@ const RegisterScreen = ({ location, history }) => {
     if (password !== confirmPassword) {
       setMessage('Passwords do not match')
     } else {
+      setMessage(null)
       dispatch(register(name, email, password))
     }
   }
 
   return (
     <FormContainer>
-      <h1>Sign Up</h1>
+      <header style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, marginBottom: 4, padding: 0 }}>Create account</h1>
+        <p style={{ fontSize: 14, color: 'var(--muted)', margin: 0 }}>
+          Less than a minute. Just an email and a password.
+        </p>
+      </header>
+
       {message && <Message variant='danger'>{message}</Message>}
       {error && <Message variant='danger'>{error}</Message>}
-      {loading && <Loader />}
-      <Form onSubmit={submitHandler}>
+      {loading && <Loader inline label='Creating account' />}
+
+      <Form onSubmit={submitHandler} className='ds-stack-md'>
         <Form.Group controlId='name'>
           <Form.Label>Name</Form.Label>
           <Form.Control
-            type='name'
-            placeholder='Enter name'
+            type='text'
+            placeholder='Your full name'
             value={name}
             onChange={(e) => setName(e.target.value)}
-          ></Form.Control>
+            required
+            autoComplete='name'
+          />
         </Form.Group>
 
         <Form.Group controlId='email'>
-          <Form.Label>Email Address</Form.Label>
+          <Form.Label>Email address</Form.Label>
           <Form.Control
             type='email'
-            placeholder='Enter email'
+            placeholder='you@example.com'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-          ></Form.Control>
+            required
+            autoComplete='email'
+          />
         </Form.Group>
 
         <Form.Group controlId='password'>
           <Form.Label>Password</Form.Label>
           <Form.Control
             type='password'
-            placeholder='Enter password'
+            placeholder='At least 8 characters'
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-          ></Form.Control>
+            required
+            autoComplete='new-password'
+          />
         </Form.Group>
 
         <Form.Group controlId='confirmPassword'>
-          <Form.Label>Confirm Password</Form.Label>
+          <Form.Label>Confirm password</Form.Label>
           <Form.Control
             type='password'
-            placeholder='Confirm password'
+            placeholder='Re-enter your password'
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-          ></Form.Control>
+            required
+            autoComplete='new-password'
+          />
         </Form.Group>
 
-        <Button type='submit' variant='primary'>
-          Register
+        <Button type='submit' variant='primary' className='btn-block' disabled={loading}>
+          Create account
         </Button>
       </Form>
 
-      <Row className='py-3'>
-        <Col>
-          Have an Account?{' '}
-          <Link to={redirect ? `/login?redirect=${redirect}` : '/login'}>
-            Login
-          </Link>
-        </Col>
-      </Row>
+      <p
+        style={{
+          marginTop: 24,
+          paddingTop: 16,
+          borderTop: '1px solid var(--border)',
+          fontSize: 14,
+          color: 'var(--muted)',
+          textAlign: 'center',
+          marginBottom: 0,
+        }}
+      >
+        Already have an account?{' '}
+        <Link to={redirect ? `/login?redirect=${redirect}` : '/login'}>Sign in</Link>
+      </p>
     </FormContainer>
   )
 }

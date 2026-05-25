@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { Form, Button } from 'react-bootstrap'
 
 const SearchBox = ({ history }) => {
   const [keyword, setKeyword] = useState('')
@@ -14,18 +13,50 @@ const SearchBox = ({ history }) => {
   }
 
   return (
-    <Form onSubmit={submitHandler} inline>
-      <Form.Control
-        type='text'
+    <form
+      onSubmit={submitHandler}
+      role='search'
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginLeft: 16,
+        marginRight: 16,
+        flex: '1 1 320px',
+        maxWidth: 480,
+      }}
+    >
+      <label htmlFor='nav-search' className='sr-only'>
+        Search products
+      </label>
+      <input
+        id='nav-search'
+        type='search'
         name='q'
+        className='form-control'
         onChange={(e) => setKeyword(e.target.value)}
-        placeholder='Search Products...'
-        className='mr-sm-2 ml-sm-5'
-      ></Form.Control>
-      <Button type='submit' variant='outline-success' className='p-2'>
+        placeholder='Search products…'
+        aria-label='Search products'
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          borderColor: 'rgba(255, 255, 255, 0.18)',
+          color: '#fff',
+          fontSize: 14,
+        }}
+      />
+      <button
+        type='submit'
+        className='btn btn-secondary btn-sm'
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          borderColor: 'rgba(255, 255, 255, 0.18)',
+          color: '#fff',
+          flexShrink: 0,
+        }}
+      >
         Search
-      </Button>
-    </Form>
+      </button>
+    </form>
   )
 }
 

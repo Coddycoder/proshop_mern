@@ -49,50 +49,79 @@ const UserEditScreen = ({ match, history }) => {
 
   return (
     <>
-      <Link to='/admin/userlist' className='btn btn-light my-3'>
-        Go Back
+      <Link to='/admin/userlist' className='btn btn-secondary btn-sm' style={{ marginTop: 16 }}>
+        <i className='fas fa-arrow-left' aria-hidden='true' /> Back to users
       </Link>
+
       <FormContainer>
-        <h1>Edit User</h1>
-        {loadingUpdate && <Loader />}
+        <header style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 22, marginBottom: 4, padding: 0 }}>Edit user</h1>
+          <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
+            Update profile or change admin access.
+          </p>
+        </header>
+
+        {loadingUpdate && <Loader inline label='Saving' />}
         {errorUpdate && <Message variant='danger'>{errorUpdate}</Message>}
+
         {loading ? (
           <Loader />
         ) : error ? (
           <Message variant='danger'>{error}</Message>
         ) : (
-          <Form onSubmit={submitHandler}>
+          <Form onSubmit={submitHandler} className='ds-stack-md'>
             <Form.Group controlId='name'>
               <Form.Label>Name</Form.Label>
               <Form.Control
-                type='name'
-                placeholder='Enter name'
+                type='text'
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-              ></Form.Control>
+              />
             </Form.Group>
 
             <Form.Group controlId='email'>
-              <Form.Label>Email Address</Form.Label>
+              <Form.Label>Email address</Form.Label>
               <Form.Control
                 type='email'
-                placeholder='Enter email'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-              ></Form.Control>
+              />
             </Form.Group>
 
             <Form.Group controlId='isadmin'>
-              <Form.Check
-                type='checkbox'
-                label='Is Admin'
-                checked={isAdmin}
-                onChange={(e) => setIsAdmin(e.target.checked)}
-              ></Form.Check>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>Admin privileges</div>
+                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                    Allows access to the admin section and management screens.
+                  </div>
+                </div>
+                <label className='ds-toggle' aria-label='Toggle admin privileges'>
+                  <input
+                    type='checkbox'
+                    role='switch'
+                    aria-checked={isAdmin}
+                    checked={isAdmin}
+                    onChange={(e) => setIsAdmin(e.target.checked)}
+                  />
+                  <span className='ds-toggle__track'>
+                    <span className='ds-toggle__thumb' />
+                  </span>
+                </label>
+              </div>
             </Form.Group>
 
-            <Button type='submit' variant='primary'>
-              Update
+            <Button type='submit' variant='primary' className='btn-block'>
+              Save changes
             </Button>
           </Form>
         )}

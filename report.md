@@ -376,3 +376,112 @@ get_feature_info("semantic_search")         →  подтверждение
 ```
 
 **Итог:** `semantic_search` переведён `Disabled → Testing @ 25%`, `last_modified=2026-05-17`. `backend/features.json` мутирован атомарно, `GET /api/feature-flags/semantic_search` отдаёт ровно это состояние без рестарта backend (Dashboard Features в админке после reload показывает новые значения).
+
+---
+
+## M4
+
+### Инструмент
+
+- **Claude Code (Opus 4.7, 1M context)** — единственный инструмент. Browser-builder'ы (Bolt / v0 / Lovable) не использовались: репо легаси-React 16 + react-scripts 3.4.3, под их pipeline не лезет без апгрейда стека. TweakCN не использовался — shadcn в проект не вводили (см. ниже).
+
+### DESIGN.md
+
+- Создал `DESIGN.md` в корне репо. Эстетика — **minimal-tech**, light only.
+- 11 секций (минимум по спеке — 7): color palette (semantic tokens), typography, spacing, radius, elevation, components, interactive states, animation, accessibility, format declaration, **Anti-AI-slop Guards** (скопирован блок из `aidev-course-materials/M4/anti-slop-supplement.md` Часть 4 и адаптирован под проект).
+- Шрифт — **Space Grotesk** (UI) + **JetBrains Mono** (data). Не Inter.
+- Spacing — строго кратные 8 (4 / 8 / 16 / 24 / 32 / 48 / 64 / 96).
+- Elevation — `no box-shadow`, depth через background-contrast + 1px border. Single exception — focus ring через `outline: 2px solid var(--ring)`.
+- Status colors: `--status-enabled` `#16A34A`, `--status-testing` `#2563EB`, `--status-disabled` `#71717A` (+ tinted backgrounds для badge-фонов).
+
+### Внедрение DESIGN.md в rules
+
+- В `CLAUDE.md` добавил секцию `## Design rules: see ./DESIGN.md` сразу после H1 — Claude Code теперь читает дизайн-систему при каждой генерации UI.
+
+### CSS-токены / реализация
+
+- `frontend/src/index.css` переписан с нуля:
+  - импорт Google Fonts (Space Grotesk + JetBrains Mono);
+  - CSS custom properties на `:root` (surfaces, primary, muted, accent, destructive, border, ring, статусы, radii, fonts);
+  - переопределения react-bootstrap (`.btn`, `.form-control`, `.card`, `.badge`, `.alert`, `.table`, `.pagination`, `.dropdown-menu`);
+  - примитивы `ds-toggle`, `ds-slider`, `ds-skeleton`, `ds-empty`, `ds-section`, `ds-stack-*`;
+  - keyframes shimmer для skeleton-loader;
+  - `prefers-reduced-motion` глобально снижает transitions/animations до 0.01ms.
+
+### Feature Dashboard (обязательная часть)
+
+- Старый экран `FeatureFlagListScreen.js` (`/admin/feature-flags`) **удалён**.
+- Создан `frontend/src/screens/FeatureDashboardScreen.js`:
+  - роут переименован на **`/admin/featuredashboard`** (`App.js`), ссылка в admin-dropdown в `Header.js` обновлена + лейбл «Feature Dashboard»;
+  - проверка `userInfo.isAdmin` сохранена (редирект на `/login` если не админ);
+  - cards-layout (карточка на фичу): name + id + description + status-badge + toggle + slider + last_modified + rollout_strategy + dependencies;
+  - **status-бейджи трёх цветов** через утилитные классы `.badge-enabled / .badge-testing / .badge-disabled` (semantic tokens из DESIGN.md);
+  - **toggle** (нативный `<input type='checkbox' role='switch'>` с `aria-checked`) — переключает Enabled ↔ Disabled, бейдж перекрашивается мгновенно;
+  - **slider 0–100%** (нативный `<input type='range'>` с шагом 5, filled-track через background-image, `aria-valuenow/min/max`) — обновляет отображаемый процент;
+  - **search** по `id` / `name` / `description`;
+  - **segmented filter** «All / Enabled / Testing / Disabled» с live-счётчиками и `role='radiogroup'`;
+  - **Loading skeleton** — 3 карточки с shimmer (не спиннер);
+  - **Empty state** — иконка + сообщение + кнопка «Clear filters»;
+  - **Error state** — alert + кнопка «Retry» с `role='alert'`;
+  - **A11y:** `aria-label` на toggle/slider/input/buttons, видимый focus-ring (outline 2px + offset 2px), keyboard nav Tab/Enter/Space.
+- Мутации только в локальном `useState` — реальная запись в `backend/features.json` поедет через webhook → n8n → MCP в M5.
+
+### Редизайн остальных страниц (15 / 15 — все)
+
+Применил `DESIGN.md` ко всем экранам и общим компонентам. CSS-токены делают 70% работы, отдельные screens полировал точечно (hero, summary cards, empty states, status badges).
+
+| # | Page | File | Done |
+|---|------|------|------|
+| 1 | Home / Search results | `HomeScreen.js` | ✅ + Hero, skeleton-grid, empty-state, redesign search-results header |
+| 2 | Product details | `ProductScreen.js` | ✅ + 2-col layout, summary card, custom review cards, empty reviews |
+| 3 | Cart | `CartScreen.js` | ✅ + line-item grid, sticky summary, empty-cart state |
+| 4 | Login | `LoginScreen.js` | ✅ |
+| 5 | Register | `RegisterScreen.js` | ✅ |
+| 6 | Profile | `ProfileScreen.js` | ✅ + orders table со status-pills, empty orders |
+| 7 | Shipping | `ShippingScreen.js` | ✅ + 2-col layout city/postal |
+| 8 | Payment | `PaymentScreen.js` | ✅ + custom radio-card |
+| 9 | Place Order | `PlaceOrderScreen.js` | ✅ + section-cards, sticky summary |
+| 10 | Order details | `OrderScreen.js` | ✅ + status badges (paid/delivered), section layout |
+| 11 | Admin: Users list | `UserListScreen.js` | ✅ + role-pills, action-button group |
+| 12 | Admin: User edit | `UserEditScreen.js` | ✅ + toggle-switch для admin-flag |
+| 13 | Admin: Products list | `ProductListScreen.js` | ✅ + clean-table layout, empty state |
+| 14 | Admin: Product edit | `ProductEditScreen.js` | ✅ + section-card layout (basics / image / pricing / categorization) |
+| 15 | Admin: Orders list | `OrderListScreen.js` | ✅ + status-pills для paid/delivered |
+| 16 | **Admin: Feature Dashboard** | `FeatureDashboardScreen.js` | ✅ (обязательная) |
+
+Плюс переоформлены общие компоненты: `Header`, `Footer`, `SearchBox`, `Product`, `ProductCarousel`, `Rating` (теперь с `role='img'` и aria-label), `CheckoutSteps` (полностью переписан в stepper с цифрами/галочкой/`aria-current`), `FormContainer` (surface wrapper), `Loader` (Spinner → skeleton с inline-вариантом), `Message` (+ a11y role).
+
+### Component decisions
+
+- **Library kept:** `react-bootstrap 1.x` оставлен. Form / Table / Pagination / Carousel / Dropdown переоформлены через CSS-перекрытия. Переписывать на shadcn не стали — см. ниже.
+- **shadcn / Tailwind 4 — отказ.** Обоснование зафиксировано в `DESIGN.md §10`: React 16 + react-scripts 3.4.3 не совместимы с современным shadcn pipeline без полного апгрейда стека, что прямо противоречит `CLAUDE.md` («prefer minimal, in-style changes over modernization»).
+- **Кастомные примитивы (написаны под этот проект):**
+  - `ds-toggle` — switch на нативном checkbox с `role='switch'`;
+  - `ds-slider` — стилизованный `<input type='range'>` с filled-track;
+  - `ds-skeleton` — shimmer через linear-gradient sweep (a11y-safe — `prefers-reduced-motion` снимает анимацию);
+  - `ds-empty` — empty-state блок (иконка + заголовок + сообщение + CTA);
+  - новый `CheckoutSteps` — single-row stepper с цифрами + галочками для done-шагов.
+
+### Anti-AI-slop — визуальный аудит
+
+- ✅ Нет градиентов нигде (background / button / hero — все solid из токенов);
+- ✅ Нет 2-column comparison-блоков («Before/After», «Without us / With us»);
+- ✅ Cards — `1px solid var(--border)`, никаких `border: 2px+` или drop-shadows на idle;
+- ✅ Hover state есть на всех кнопках (`--primary-hover` или bg shift на secondary);
+- ✅ Focus ring виден везде: `outline: 2px solid var(--ring)` с offset 2px на `:focus-visible`;
+- ✅ Loading state — skeleton, не спиннер (старый `Spinner`-based `Loader` заменён, inline-вариант для action-triggered);
+- ✅ Все отступы кратны 8 (см. spacing scale в `DESIGN.md §3`);
+- ✅ Шрифт — Space Grotesk (не Inter);
+- ✅ Tabular-nums на всех колонках цифр (цены, проценты, количества);
+- ✅ Empty states у всех list-экранов: Cart / Reviews / Profile orders / Admin lists / Feature Dashboard filter-empty;
+- ✅ shadcn не используется → дефолтный slate/zinc не применим.
+
+### Сборка
+
+`cd frontend && npm run build` — собирается чисто. Остались 2 pre-existing `react-hooks/exhaustive-deps` warning'а в `ProductScreen.js` и `OrderScreen.js` — оба унаследованы из исходного `bradtraversy/proshop_mern`, в M4 я их не вносил и не трогал (логика этих useEffect не менялась).
+
+### Не реализовано (intentionally out of scope)
+
+- **Dark mode** — спека M4 этого не требует; токены в `index.css` готовы к `.dark` override на `:root`, но переключатель не добавлен.
+- **Реальные мутации Feature Dashboard** — toggle и slider работают только в локальном UI-state. Запись в `backend/features.json` пойдёт через webhook → n8n → MCP в M5 (так заложено в M4/README.md спеки).
+- **Storybook / визуальные тесты** — за рамками.

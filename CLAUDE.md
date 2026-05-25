@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Design rules: see ./DESIGN.md
+
+All UI generation must follow `./DESIGN.md` — single source of truth for the visual language (colors, typography, spacing, components, interactive states, anti-AI-slop guards). Read it before touching any frontend file. Never hardcode colors / arbitrary spacing; use CSS variables from `frontend/src/index.css`.
+
 ## Project status
 
 The README marks this project as **deprecated**; an updated Redux-Toolkit version lives at `bradtraversy/proshop-v2`. Treat this repo as legacy: prefer minimal, in-style changes over modernization unless explicitly asked. Stack pins are old (React 16, Mongoose 5, redux + redux-thunk, react-router-dom v5, react-scripts 3.4.3) — do not casually upgrade.
