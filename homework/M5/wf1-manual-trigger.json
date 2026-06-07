@@ -1,0 +1,379 @@
+{
+  "name": "wf1-manual-trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "feature-control",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf1-webhook",
+      "name": "Webhook - feature-control",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        320
+      ],
+      "webhookId": "feature-control",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "n8n-feature-control-api-key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "missing_feature_id",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-1",
+                    "leftValue": "={{ $json.body.feature_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "missing_action",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-2",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "invalid_action",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-3",
+                    "leftValue": "={{ ['check','test','rollback','rollout'].includes($json.body.action) }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "invalid_traffic",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-4",
+                    "leftValue": "={{ $json.body.traffic_percentage !== undefined && ($json.body.traffic_percentage < 0 || $json.body.traffic_percentage > 100) }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "wf1-switch",
+      "name": "Switch - Input Validation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        60,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": false, \"message\": \"Validation error: invalid request parameters\", \"rejected_at\": \"input-validation\" }",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "wf1-respond-400",
+      "name": "Respond 400 - Validation",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Команда из UI: action={{ $json.body.action }}, feature_id={{ $json.body.feature_id }}, target_state={{ $json.body.target_state }}, traffic_percentage={{ $json.body.traffic_percentage }}.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Goal:\nВыполни команду из UI по управлению feature flag {{ $json.body.feature_id }}, вызывая инструменты MCP feature-flags, и верни JSON-вердикт.\n\nContext:\n- Команда из UI: action={{ $json.body.action }}, target_state={{ $json.body.target_state }}, traffic_percentage={{ $json.body.traffic_percentage }}.\n- ВСЕГДА сначала читай текущее состояние через get_feature_info(feature_id) до любых изменений.\n- Доступные MCP-инструменты и их РЕАЛЬНЫЕ параметры:\n  - get_feature_info(feature_id)\n  - set_feature_state(feature_id, state)  // state ∈ {\"Enabled\",\"Disabled\",\"Testing\"}\n  - adjust_traffic_rollout(feature_id, percentage)  // целое 0..100; ТРЕБУЕТ статус \"Testing\"\n  - list_features()\n- Поддерживаемые UI-actions: \"check\" (только чтение), \"test\" (-> Testing), \"rollback\" (-> Disabled), \"rollout\" (-> изменить процент трафика).\n\nAction:\n1. action=\"check\": вызови get_feature_info и верни результат.\n2. action=\"test\": get_feature_info -> если статус уже \"Testing\", верни success no-op -> иначе set_feature_state(feature_id,\"Testing\") -> get_feature_info для верификации.\n3. action=\"rollback\": get_feature_info -> если уже \"Disabled\", верни success no-op (message \"Фича уже Disabled\") -> иначе set_feature_state(feature_id,\"Disabled\") -> get_feature_info.\n4. action=\"rollout\": get_feature_info -> если статус не \"Testing\", сначала set_feature_state(feature_id,\"Testing\") (adjust_traffic_rollout требует Testing) -> adjust_traffic_rollout(feature_id, traffic_percentage) -> get_feature_info. Если traffic_percentage не передан — верни ошибку без вызова инструментов.\n5. Если инструмент вернул поле \"error\" — верни success=false с его message.\n\nOutput:\nВерни JSON строго по схеме:\n{\n  \"success\": boolean,\n  \"message\": string (1 предложение на русском),\n  \"current_state\": { \"id\": string, \"name\": string, \"status\": \"Enabled\"|\"Disabled\"|\"Testing\", \"traffic_percentage\": number, \"last_modified\": string } | null,\n  \"rejected_at\": \"input-validation\" | \"tool-execution\" | null\n}\nПоле feature_id из инструмента маппи в current_state.id.\n\nConstraints:\n- traffic_percentage в диапазоне [0,100]. Если -50 или 150 — отказ с пояснением (реальный guard — Switch-нода + JSON Schema на MCP, промт лишь дополнительный слой).\n- НЕ вызывай set_feature_state повторно если текущий статус уже равен целевому.\n- Используй инструменты; никогда не выдумывай состояние.",
+          "maxIterations": 5,
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "wf1-agent",
+      "name": "AI Agent - Feature Controller",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        360,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "wf1-chat-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        700
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_ME",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.feature_id }}",
+        "contextWindowLength": 5
+      },
+      "id": "wf1-memory",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        360,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "sseEndpoint": "http://host.docker.internal:8787/sse",
+        "authentication": "none",
+        "include": "all"
+      },
+      "id": "wf1-mcp",
+      "name": "Feature Flags MCP",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        520,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"required\":[\"success\",\"message\"],\"properties\":{\"success\":{\"type\":\"boolean\"},\"message\":{\"type\":\"string\"},\"current_state\":{\"type\":[\"object\",\"null\"],\"properties\":{\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"status\":{\"type\":\"string\",\"enum\":[\"Enabled\",\"Disabled\",\"Testing\"]},\"traffic_percentage\":{\"type\":\"number\"},\"last_modified\":{\"type\":\"string\"}}},\"rejected_at\":{\"type\":[\"string\",\"null\"]}}}"
+      },
+      "id": "wf1-parser",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.output ?? $json }}",
+        "options": {}
+      },
+      "id": "wf1-respond-200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - feature-control": {
+      "main": [
+        [
+          {
+            "node": "Switch - Input Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Input Validation": {
+      "main": [
+        [
+          {
+            "node": "Respond 400 - Validation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400 - Validation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400 - Validation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400 - Validation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Feature Controller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Feature Controller",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Feature Controller",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feature Flags MCP": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent - Feature Controller",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent - Feature Controller",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Feature Controller": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateId": "m5-wf1-manual-trigger"
+  },
+  "tags": []
+}

@@ -1,0 +1,401 @@
+{
+  "name": "wf2-scheduled-monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "wf2-schedule",
+      "name": "Schedule - every minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -220,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deterministic read + analysis (Algorithm-before-AI).\n// logs.json and features.json are bind-mounted into the n8n container.\n// Requires n8n env NODE_FUNCTION_ALLOW_BUILTIN=fs (or *).\nconst fs = require('fs');\nconst LOGS = '/data/logs/logs.json';\nconst FEATURES = '/data/backend/features.json';\nconst FEATURE_ID = 'search_v2';\n\nlet events = [];\ntry { events = JSON.parse(fs.readFileSync(LOGS, 'utf-8')); } catch (e) {}\n\nconst now = Date.now();\nconst windowMs = 60 * 1000;\nconst recent = events.filter(e =>\n  e.feature_id === FEATURE_ID && (now - new Date(e.timestamp).getTime()) < windowMs\n);\nconst total = recent.length;\nconst errors = recent.filter(e => e.status === 'error').length;\nconst error_rate = total > 0 ? errors / total : 0;\n\nlet current_status = 'Unknown';\nlet feature_name = FEATURE_ID;\ntry {\n  const features = JSON.parse(fs.readFileSync(FEATURES, 'utf-8'));\n  if (features[FEATURE_ID]) {\n    current_status = features[FEATURE_ID].status;\n    feature_name = features[FEATURE_ID].name;\n  }\n} catch (e) {}\n\nreturn [{ json: { feature_id: FEATURE_ID, feature_name, error_rate, total, errors, current_status } }];"
+      },
+      "id": "wf2-code",
+      "name": "Read & Analyze Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "deactivate",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-5",
+                    "leftValue": "={{ $json.error_rate }}",
+                    "rightValue": 0.05,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    }
+                  },
+                  {
+                    "id": "cond-6",
+                    "leftValue": "={{ $json.current_status }}",
+                    "rightValue": "Disabled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            },
+            {
+              "outputKey": "reenable",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "cond-7",
+                    "leftValue": "={{ $json.error_rate }}",
+                    "rightValue": 0.01,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lt"
+                    }
+                  },
+                  {
+                    "id": "cond-8",
+                    "leftValue": "={{ $json.current_status }}",
+                    "rightValue": "Disabled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "wf2-switch",
+      "name": "Switch - Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        200,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-deactivate",
+              "name": "decision",
+              "value": "deactivate",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf2-set-deactivate",
+      "name": "Set Decision deactivate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-reenable",
+              "name": "decision",
+              "value": "reenable",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf2-set-reenable",
+      "name": "Set Decision reenable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Decision: {{ $json.decision }} для {{ $json.feature_id }}. error_rate={{ $json.error_rate }}, current_status={{ $json.current_status }}.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Goal:\nЗарегистрировать инцидент или recovery для feature {{ $json.feature_id }} ({{ $json.feature_name }}).\nТекущий error rate: {{ $json.error_rate }} (deactivate > 0.05, re-enable < 0.01). Текущий статус: {{ $json.current_status }}. Decision из upstream Switch: {{ $json.decision }} (deactivate | reenable).\n\nContext:\n- Decision уже вычислен детерминированно upstream (Code-нода + Switch). Твоя задача — ВЫПОЛНИТЬ его через MCP, не пере-решать. Это Algorithm-before-AI: guards снаружи модели.\n- MCP-инструменты (РЕАЛЬНЫЕ параметры): get_feature_info(feature_id), set_feature_state(feature_id, state) где state ∈ {\"Enabled\",\"Disabled\",\"Testing\"}.\n\nAction:\n1. get_feature_info(feature_id) — свежий статус (защита от гонки между Switch и агентом).\n2. decision=\"deactivate\": если статус уже \"Disabled\" -> action_taken=\"no_op\", reason=\"already_disabled\". Иначе set_feature_state(feature_id,\"Disabled\"), затем get_feature_info.\n3. decision=\"reenable\": если статус НЕ \"Disabled\" -> action_taken=\"no_op\", reason=\"already_enabled\". Иначе set_feature_state(feature_id,\"Enabled\"), затем get_feature_info. Если зависимость блокирует Enable (инструмент вернёт error) -> action_taken=\"error\", reason = сообщение инструмента.\n4. Сформируй короткий русский alert_message для Telegram.\n\nOutput:\nJSON строго по схеме:\n{\n  \"action_taken\": \"deactivated\"|\"reenabled\"|\"no_op\"|\"error\",\n  \"previous_state\": object|null,\n  \"new_state\": object|null,\n  \"alert_message\": string (1-2 предложения),\n  \"error_rate_percent\": number,\n  \"threshold_used\": number,\n  \"reason\": string|null\n}\nerror_rate_percent = error_rate * 100 (округли до 1 знака). threshold_used = 5 при deactivate, 1 при reenable.\n\nConstraints:\n- alert_message по шаблону (подставь имя фичи и процент сам, без фигурных скобок):\n  deactivate: 🚨 Feature <name> деактивирована: error rate <X>% превысил порог 5%.\n  reenable:   ✅ Feature <name> восстановлена: error rate <X>% упал ниже 1%.\n- НЕ вызывай set_feature_state если статус уже целевой.\n- При ошибке от MCP -> action_taken=\"error\", reason = сообщение инструмента.",
+          "maxIterations": 3,
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "wf2-agent",
+      "name": "Monitor Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        680,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "wf2-chat-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        500
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_ME",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sseEndpoint": "http://host.docker.internal:8787/sse",
+        "authentication": "none",
+        "include": "all"
+      },
+      "id": "wf2-mcp",
+      "name": "Feature Flags MCP",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        720,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"required\":[\"action_taken\",\"alert_message\"],\"properties\":{\"action_taken\":{\"type\":\"string\",\"enum\":[\"deactivated\",\"reenabled\",\"no_op\",\"error\"]},\"previous_state\":{\"type\":[\"object\",\"null\"]},\"new_state\":{\"type\":[\"object\",\"null\"]},\"alert_message\":{\"type\":\"string\"},\"error_rate_percent\":{\"type\":\"number\"},\"threshold_used\":{\"type\":\"number\"},\"reason\":{\"type\":[\"string\",\"null\"]}}}"
+      },
+      "id": "wf2-parser",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "326317551",
+        "text": "={{ ($json.output ?? $json).alert_message }}",
+        "additionalFields": {}
+      },
+      "id": "wf2-telegram",
+      "name": "Telegram - Send Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        260
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram alerts bot"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "wf2-noop",
+      "name": "NoOp - within threshold",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        400,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule - every minute": {
+      "main": [
+        [
+          {
+            "node": "Read & Analyze Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read & Analyze Logs": {
+      "main": [
+        [
+          {
+            "node": "Switch - Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Decision": {
+      "main": [
+        [
+          {
+            "node": "Set Decision deactivate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Decision reenable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp - within threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Decision deactivate": {
+      "main": [
+        [
+          {
+            "node": "Monitor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Decision reenable": {
+      "main": [
+        [
+          {
+            "node": "Monitor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Monitor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feature Flags MCP": {
+      "ai_tool": [
+        [
+          {
+            "node": "Monitor Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Monitor Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monitor Agent": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateId": "m5-wf2-scheduled-monitor"
+  },
+  "tags": []
+}

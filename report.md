@@ -485,3 +485,78 @@ get_feature_info("semantic_search")         →  подтверждение
 - **Dark mode** — спека M4 этого не требует; токены в `index.css` готовы к `.dark` override на `:root`, но переключатель не добавлен.
 - **Реальные мутации Feature Dashboard** — toggle и slider работают только в локальном UI-state. Запись в `backend/features.json` пойдёт через webhook → n8n → MCP в M5 (так заложено в M4/README.md спеки).
 - **Storybook / визуальные тесты** — за рамками.
+
+---
+
+## M5
+
+Замкнул full-stack: **M3 (руки / MCP)** + **M4 (глаза / Dashboard)** + **M5 (мозг / AI Agent в n8n)**. Два workflow управляют feature flags через MCP из M3. Полный runbook, схемы и все артефакты — в [`homework/M5/`](./homework/M5/) (детальный [`README.md`](./homework/M5/README.md)).
+
+### Стек / инструменты
+
+- **n8n:** self-host Docker (**2.23.4**) на той же машине, что backend/MCP. [`homework/M5/docker-compose.yml`](./homework/M5/docker-compose.yml) — turnkey: volume-mounts (`logs.json` + `backend/features.json` в контейнер) + `NODE_FUNCTION_ALLOW_BUILTIN=fs` для Code-ноды. На этом билде активация — модель **Publish/Unpublish** (не тумблер Active).
+- **Chat Model:** OpenAI `gpt-4o-mini` (нода `lmChatOpenAi`). Изначально брал Claude, но `lmChatAnthropic` на этом билде отдавал 400 на id модели → переключился (см. «Что было сложно»).
+- **MCP M3 по сети:** в [`mcp-servers/feature-flags/server.py`](./mcp-servers/feature-flags/server.py) добавил выбор транспорта `--transport stdio|sse|http` + `/health` + schema-валидацию `percentage` (`Annotated[int, Field(ge=0, le=100)]`). `stdio` остался дефолтом (`.mcp.json` для Claude Code цел). n8n MCP Client Tool (`@n8n/n8n-nodes-langchain.mcpClientTool`) ходит на `http://host.docker.internal:8787/sse`.
+- **Фронт (CRA, не Vite):** новый `frontend/src/components/AutoPilotControls.js` (check / test / rollback + rollout) встроен в `FeatureDashboardScreen.js`; env через `process.env.REACT_APP_*` (`frontend/.env.example`).
+
+### WF1 — manual trigger (UI → webhook → AI Agent → MCP)
+
+Webhook (Header Auth `X-API-Key`) → Switch `rules` (4 правила валидации + fallback) → AI Agent (`gpt-4o-mini` + Window Buffer Memory `sessionKey={{ $json.body.feature_id }}` + MCP Client Tool + Structured Output Parser, `maxIterations=5`) → Respond `{success, message, current_state, rejected_at}`.
+
+Проверено вживую (curl на production webhook):
+
+| Кейс | Результат |
+|---|---|
+| без `X-API-Key` | `403 Authorization data is wrong!` |
+| `rollout, traffic_percentage=-50` | `400 rejected_at: input-validation` (отбито на Switch, **до LLM**) |
+| `check` | `200` — агент вызвал `get_feature_info`, вернул реальный статус `search_v2` |
+| `rollback` / `test` / `rollout 25` | `200` — записи через `set_feature_state` / `adjust_traffic_rollout` |
+
+Трейс с reasoning агента (`intermediateSteps` → вызов `Feature_Flags_MCP_get_feature_info`):
+
+![WF1 trace](./homework/M5/trace-wf1.png)
+
+### WF2 — scheduled monitor (cron → анализ → AI Agent → Telegram)
+
+Schedule (1 мин) → Code (детерминированно читает `logs.json` за 60с + статус из `features.json`) → Switch (deactivate `>5%` / reenable `<1%` / fallback→NoOp) → Set Decision (×2) → Monitor Agent (`gpt-4o-mini` + MCP, **без Memory**, `maxIterations=3`) → Telegram. Решение считается детерминированно upstream (**Algorithm-before-AI**), агент лишь исполняет запись через MCP. Telegram подключён только к main агента → на no-op молчит.
+
+`simulate_wf2.py` гонит синусоидальный error rate (period 180s). Наблюдаемый **повторяемый** цикл `search_v2`:
+
+```
+→ Disabled  (error_rate > 5%)  → Telegram 🚨
+→ Enabled   (error_rate < 1%)  → Telegram ✅
+→ Disabled  (следующий подъём синусоиды)  → 🚨   ...
+```
+
+Алерты получены (`@proshop_m5_alerts_bot`):
+
+![WF2 Telegram cycle](./homework/M5/trace-wf2-toggle.png)
+
+### Тест на галлюцинации (defense in depth)
+
+`{action:"rollout", traffic_percentage:-50}` → `400 rejected_at: input-validation`. Guard в двух местах:
+1. **Switch-нода WF1** (`invalid_traffic`: `<0 || >100`) — невалидный ввод не доходит до LLM.
+2. **MCP M3** — `adjust_traffic_rollout(percentage: Annotated[int, Field(ge=0, le=100)])` + runtime-проверка `INVALID_PERCENTAGE`.
+
+Constraint в промте — лишь третий, рекомендательный слой. `simulate_wf1.py --include-invalid` шлёт `-50` каждый 7-й запрос.
+
+### CC-субагенты (Part D)
+
+`n8n-requirements-orchestrator` + `n8n-workflow-builder` установлены в `~/.claude/agents/` (2 файла). В материалах курса они `PLACEHOLDER`, поэтому workflow JSON собран по валидированной спеке D.4 + сверке типов нод с docs.n8n.io (`mcpClientTool@1`, `lmChatOpenAi@1.2`, `agent@3`, `switch@3`) — как советует сам builder.
+
+### Отличия от спеки (осознанные)
+
+1. **CRA, не Vite** → `process.env.REACT_APP_*` вместо `import.meta.env.VITE_*`.
+2. **Реальные имена tool-параметров** (`state`, `percentage`, не `target_state`/`traffic_percentage`) — агент маппит UI-контракт через схему MCP.
+3. **WF2: чтение статуса в Code-ноде** (`features.json`), а не HTTP→MCP: FastMCP по сети отдаёт MCP-протокол, не REST. Запись — через агента/MCP. Чище по Algorithm-before-AI (заменил ноды HTTP Request + Merge Data одной Code-нодой).
+
+### Что было сложно
+
+- **MCP умел только stdio** — n8n по сети не достучаться. Добавил `--transport sse|http` + `/health`, сохранив stdio по умолчанию.
+- **Webhook кладёт тело в `$json.body`, не `$json`** — Switch со спековским `{{ $json.feature_id }}` ловил `missing_feature_id` на любом запросе (и `-50` «проходил тест» по ложной причине). Перевёл все ссылки WF1 на `$json.body.*`.
+- **AI Agent + Structured Output кладёт результат в корень `$json`, не `.output`** (n8n 2.23.4) — Respond возвращал пусто. Маппинг `{{ $json.output ?? $json }}`.
+- **`lmChatAnthropic` → «Bad request» на id модели** — агент падал без финального item. Переключился на OpenAI `gpt-4o-mini` — заработало сразу. Урок: модель — тоже параметр, проверять по логам, не по UI.
+
+### Артефакты и статус
+
+`homework/M5/`: `wf1-manual-trigger.json`, `wf2-scheduled-monitor.json`, `simulate_wf1.py`, `simulate_wf2.py`, `logs.json`, `docker-compose.yml`, `trace-wf1.png` (+ `trace-wf1-canvas.png`), `trace-wf2-toggle.png`, детальный `README.md`. **Скринкаст опущен осознанно** — сквозной цикл доказан трейсами выше (reasoning агента WF1 + Telegram-цикл WF2).

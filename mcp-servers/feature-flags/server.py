@@ -7,14 +7,18 @@ file.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import tempfile
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from pydantic import Field
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 VALID_STATES = ("Disabled", "Testing", "Enabled")
 
@@ -27,6 +31,12 @@ FEATURES_PATH = Path(
 
 
 mcp = FastMCP("proshop-feature-flags")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(_request: Request) -> JSONResponse:
+    """Liveness probe for n8n / curl when running over HTTP/SSE transport."""
+    return JSONResponse({"status": "ok", "server": "proshop-feature-flags"})
 
 
 def _read_features() -> dict[str, Any]:
@@ -282,7 +292,10 @@ def set_feature_state(feature_id: str, state: str) -> dict[str, Any]:
 
 
 @mcp.tool
-def adjust_traffic_rollout(feature_id: str, percentage: int) -> dict[str, Any]:
+def adjust_traffic_rollout(
+    feature_id: str,
+    percentage: Annotated[int, Field(ge=0, le=100)],
+) -> dict[str, Any]:
     """Change traffic_percentage for a feature currently in 'Testing' status.
 
     Use this to ramp a canary up or down (5% -> 25% -> 50% -> 100%) without
@@ -378,5 +391,47 @@ def adjust_traffic_rollout(feature_id: str, percentage: int) -> dict[str, Any]:
     }
 
 
+def main() -> None:
+    """CLI entrypoint.
+
+    Default transport is stdio so the Claude Code registration in .mcp.json keeps
+    working unchanged. For n8n (which talks to the MCP over the network), run with
+    an HTTP/SSE transport, e.g.:
+
+        # streamable HTTP (modern n8n MCP Client Tool) -> http://host:port/mcp
+        python server.py --transport http --host 0.0.0.0 --port 8787
+
+        # legacy SSE endpoint -> http://host:port/sse
+        python server.py --transport sse --host 0.0.0.0 --port 8787
+
+    When n8n runs in Docker on the same machine it reaches the host via
+    host.docker.internal, so bind to 0.0.0.0 (not 127.0.0.1) for that case.
+    """
+    parser = argparse.ArgumentParser(description="proshop feature-flags MCP server")
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "http", "sse"),
+        default=os.environ.get("MCP_TRANSPORT", "stdio"),
+        help="Transport to expose the MCP server on (default: stdio).",
+    )
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("MCP_HOST", "127.0.0.1"),
+        help="Host to bind when transport is http/sse (default: 127.0.0.1).",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("MCP_PORT", "8787")),
+        help="Port to bind when transport is http/sse (default: 8787).",
+    )
+    args = parser.parse_args()
+
+    if args.transport == "stdio":
+        mcp.run()
+    else:
+        mcp.run(transport=args.transport, host=args.host, port=args.port)
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()

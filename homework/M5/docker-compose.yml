@@ -1,0 +1,28 @@
+# M5 — turnkey n8n for the two homework workflows.
+# Run from repo root:
+#   docker compose -f homework/M5/docker-compose.yml up -d
+#
+# Mounts:
+#   ./logs.json            -> /data/logs/logs.json      (WF2 reads traffic events)
+#   ../../backend          -> /data/backend             (WF2 reads features.json status)
+# The M3 MCP server runs on the HOST (`server.py --transport sse --port 8787`);
+# n8n reaches it at http://host.docker.internal:8787/sse.
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: proshop-m5-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs        # Code node needs require('fs')
+      - N8N_SECURE_COOKIE=false               # allow login over http://localhost
+      - N8N_RUNNERS_ENABLED=true
+      - GENERIC_TIMEZONE=Europe/Moscow
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach host MCP (Linux; harmless on macOS)
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - .:/data/logs                          # homework/M5 -> /data/logs
+      - ../../backend:/data/backend           # backend -> /data/backend
+volumes:
+  n8n_data:

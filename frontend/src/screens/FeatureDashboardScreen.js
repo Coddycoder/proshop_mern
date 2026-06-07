@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import { useDispatch, useSelector } from 'react-redux'
 import { listFeatureFlags } from '../actions/featureFlagActions'
+import AutoPilotControls from '../components/AutoPilotControls'
 
 const STATUS_FILTERS = ['All', 'Enabled', 'Testing', 'Disabled']
 
@@ -110,10 +111,16 @@ const FeatureCard = ({
   uiTraffic,
   onToggle,
   onTrafficChange,
+  isSelected,
+  onSelectToggle,
+  onUpdated,
 }) => {
   const isEnabled = uiStatus === 'Enabled'
   return (
-    <div className='card mb-3'>
+    <div
+      className='card mb-3'
+      style={isSelected ? { borderColor: 'var(--accent)' } : undefined}
+    >
       <div className='card-body'>
         <div
           style={{
@@ -216,6 +223,30 @@ const FeatureCard = ({
             )}
           </div>
         </div>
+
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type='button'
+            className='btn btn-secondary btn-sm'
+            onClick={() => onSelectToggle(id)}
+            aria-expanded={isSelected}
+            aria-controls={`autopilot-${id}`}
+          >
+            <i className='fas fa-robot' aria-hidden='true'></i>{' '}
+            {isSelected ? 'Скрыть Auto-Pilot' : 'Auto-Pilot'}
+          </button>
+        </div>
+
+        {isSelected && (
+          <div id={`autopilot-${id}`}>
+            <AutoPilotControls
+              featureId={id}
+              featureName={feature.name}
+              currentStatus={uiStatus}
+              onUpdated={() => onUpdated(id)}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -236,6 +267,9 @@ const FeatureDashboardScreen = ({ history }) => {
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+
+  // Which feature has its Auto-Pilot (n8n) panel expanded.
+  const [selectedId, setSelectedId] = useState(null)
 
   useEffect(() => {
     if (userInfo && userInfo.isAdmin) {
@@ -263,6 +297,26 @@ const FeatureDashboardScreen = ({ history }) => {
 
   const handleTraffic = (id, value) => {
     setTrafficOverrides((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const handleSelectToggle = (id) => {
+    setSelectedId((prev) => (prev === id ? null : id))
+  }
+
+  // After the agent mutated the flag via MCP, drop any optimistic override for
+  // this feature and re-read the source of truth so the card shows real state.
+  const handleUpdated = (id) => {
+    setStatusOverrides((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setTrafficOverrides((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    dispatch(listFeatureFlags())
   }
 
   const filtered = useMemo(() => {
@@ -310,9 +364,10 @@ const FeatureDashboardScreen = ({ history }) => {
               }}
             >
               Live view of <code>backend/features.json</code>. Toggle status and
-              adjust traffic rollout to preview changes — this UI is read-only
-              against the source of truth until M5 wires writes through the
-              feature-flags MCP server.
+              adjust traffic rollout to preview changes locally, or open{' '}
+              <strong>Auto-Pilot</strong> on a feature to send a command to the
+              n8n AI Agent — it turns the feature-flags MCP knobs and reports
+              back, then the card refreshes from the source of truth.
             </p>
           </header>
 
@@ -434,6 +489,9 @@ const FeatureDashboardScreen = ({ history }) => {
                   uiTraffic={getTraffic(id, f.traffic_percentage)}
                   onToggle={handleToggle}
                   onTrafficChange={handleTraffic}
+                  isSelected={selectedId === id}
+                  onSelectToggle={handleSelectToggle}
+                  onUpdated={handleUpdated}
                 />
               ))}
             </div>
