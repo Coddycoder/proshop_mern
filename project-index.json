@@ -156,6 +156,7 @@
       "package.json",
       "project-index.json",
       "rag",
+      "report.md",
       "tmp",
       "uploads"
     ],
@@ -299,8 +300,7 @@
     ],
     "homework-m6/stage3-living-docs/docs-archived": [
       "FINDINGS.md",
-      "docs-report.md",
-      "report.md"
+      "docs-report.md"
     ],
     "homework-m6/stage3-living-docs/docs-new": [
       "README.md",
@@ -588,9 +588,8 @@
     ],
     "docs-archived-2026-06-07": [
       "FINDINGS.md",
-      "docs-report.md",
-      "report.md"
+      "docs-report.md"
     ]
   },
-  "last_updated": "2026-06-07T14:56:02.072525+00:00"
+  "last_updated": "2026-06-07T15:31:51.317309+00:00"
 }

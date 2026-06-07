@@ -20,9 +20,9 @@
 
 ## Existing docs audit (Phase 1.5) — full table: [`docs-audit.md`](docs-audit.md)
 
-- ✅ Keep / carry: 20 · 🔄 carry+TODO: 5 · 📦 archive: 3 · ❌: 0
+- ✅ Keep / carry: 21 · 🔄 carry+TODO: 5 · 📦 archive: 2 · ❌: 0
 - **Live-infra guard:** `docs/project-data/` (RAG corpus) + `docs/chunks.jsonl` (read by `rag/ingest.py:27`) stay in place — additive restructure only.
-- **Archive (📦):** `FINDINGS.md`, `report.md` (root), `docs/report.md`.
+- **Archive (📦):** `FINDINGS.md`, `docs/report.md`. (root `report.md` kept — active cross-module work journal.)
 
 ## Audit scope
 
@@ -48,7 +48,7 @@
   - `docs/specs/` — the 4 reverse-eng specs from Phase 3.
   - `docs/adr/` — copy `project-data/adrs/adr-001..005` + add `adr-006`, `adr-007` (from Stage 1 `proposed-adrs/`), preserve numbering.
   - TODO(audit-2026-06-07) markers on the 3 🔄 corpus files + `docs/architecture.md`.
-- [x] 4.4 Archive 📦 only: `git mv FINDINGS.md report.md docs/report.md docs-archived-2026-06-07/`. (project-data + chunks.jsonl untouched.)
+- [x] 4.4 Archive 📦 only: `git mv FINDINGS.md docs/report.md docs-archived-2026-06-07/`. (project-data + chunks.jsonl untouched; root `report.md` kept — active work journal.)
 - [x] 4.5 No atomic swap needed — restructure is additive inside `docs/`.
 
 ## Phase 5 — AUTOMATE
@@ -68,7 +68,7 @@
 - Phase 5: ~10-15 min
 
 ## Open questions for the user (approval gate)
-1. **Archive set** = exactly 3 files (`FINDINGS.md`, root `report.md`, `docs/report.md`). The big `docs/project-data/` corpus + `docs/chunks.jsonl` stay (live RAG). OK?
+1. **Archive set** = 2 files (`FINDINGS.md`, `docs/report.md`); root `report.md` kept (active work journal). The big `docs/project-data/` corpus + `docs/chunks.jsonl` stay (live RAG). OK?
 2. **Edit `CLAUDE.md`** in place (2 new sections + port-note fix). OK to modify the project rules file?
 3. **PostToolUse hook** auto-runs `update_project_index.py` on every Write/Edit/Bash — install it (optional per spec), or skip and rely on manual/SessionStart only?
 4. **TODO markers** added to 3 live RAG-corpus files (would need a re-ingest to reflect in search) — apply, or record divergences only in the new overview?

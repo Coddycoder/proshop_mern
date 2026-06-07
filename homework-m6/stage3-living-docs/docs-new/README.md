@@ -40,7 +40,7 @@ Navigation hub for this fork's documentation. **Start with [`/project-index.json
 
 - [`/DESIGN.md`](../DESIGN.md) — M4 design system (UI single source of truth).
 - [`/homework-m6/`](../homework-m6/) — M6 audit artifacts (code review, fixes, this docs pack, tests agent).
-- `docs-archived-2026-06-07/` (repo root) — archived historical docs (earlier `FINDINGS.md`, session reports). Superseded by `homework-m6/stage1-code-review/synthesis.md`.
+- `docs-archived-2026-06-07/` (repo root) — archived historical docs (`FINDINGS.md` + the M3 chunking build report). The cross-module work journal `report.md` stays at the repo root (it's actively maintained, M3-M6). `FINDINGS.md` is superseded by `homework-m6/stage1-code-review/synthesis.md`.
 
 ---
 

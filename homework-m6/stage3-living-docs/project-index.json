@@ -156,6 +156,7 @@
       "package.json",
       "project-index.json",
       "rag",
+      "report.md",
       "tmp",
       "uploads"
     ],
@@ -259,7 +260,21 @@
       "stage3-living-docs",
       "stage4-tests-agent"
     ],
-    "homework-m6/stage4-tests-agent": [],
+    "homework-m6/stage4-tests-agent": [
+      "README.md",
+      "coverage-report.txt",
+      "service-1-tests",
+      "service-2-tests",
+      "test-writer-mate.md"
+    ],
+    "homework-m6/stage4-tests-agent/service-1-tests": [
+      "conftest.py",
+      "test_server.py"
+    ],
+    "homework-m6/stage4-tests-agent/service-2-tests": [
+      "conftest.py",
+      "test_query.py"
+    ],
     "homework-m6/stage2-fix-top3": [
       "fix-1-idor-getorderbyid.md",
       "fix-2-getusers-password-leak.md",
@@ -274,9 +289,60 @@
     ],
     "homework-m6/stage3-living-docs": [
       "00-plan.md",
+      "CLAUDE.md",
+      "docs-archived",
       "docs-audit.md",
+      "docs-new",
       "hook-demo.txt",
-      "stage3-synthesis.md"
+      "project-index.json",
+      "stage3-synthesis.md",
+      "update_project_index.py"
+    ],
+    "homework-m6/stage3-living-docs/docs-archived": [
+      "FINDINGS.md",
+      "docs-report.md"
+    ],
+    "homework-m6/stage3-living-docs/docs-new": [
+      "README.md",
+      "adr",
+      "architecture",
+      "architecture.md",
+      "chunking-spec.md",
+      "chunks.jsonl",
+      "project-data",
+      "specs"
+    ],
+    "homework-m6/stage3-living-docs/docs-new/adr": [
+      "adr-001-mongodb-vs-postgres.md",
+      "adr-002-redux-vs-context.md",
+      "adr-003-jwt-vs-session.md",
+      "adr-004-paypal-vs-stripe.md",
+      "adr-005-bootstrap-vs-tailwind.md",
+      "adr-006-features-json-shared-store.md",
+      "adr-007-autopilot-n8n-mcp-pipeline.md"
+    ],
+    "homework-m6/stage3-living-docs/docs-new/specs": [
+      "feature-flags-backend-spec.md",
+      "feature-flags-mcp-spec.md",
+      "rag-pipeline-spec.md",
+      "search-docs-mcp-spec.md"
+    ],
+    "homework-m6/stage3-living-docs/docs-new/project-data": [
+      "adrs",
+      "api",
+      "architecture.md",
+      "best-practices.md",
+      "dev-history.md",
+      "feature-flags-spec.md",
+      "features",
+      "features-analysis-ru.md",
+      "glossary.md",
+      "incidents",
+      "pages",
+      "runbooks"
+    ],
+    "homework-m6/stage3-living-docs/docs-new/architecture": [
+      "overview.md"
     ],
     "homework-m6/stage1-code-review": [
       "architecture-findings.jsonl",
@@ -456,10 +522,15 @@
     ],
     "rag": [
       ".python-version",
+      "__tests__",
       "ingest.py",
       "pyproject.toml",
       "query.py",
       "uv.lock"
+    ],
+    "rag/__tests__": [
+      "conftest.py",
+      "test_query.py"
     ],
     "homework": [
       "M5"
@@ -481,10 +552,15 @@
       "search-docs"
     ],
     "mcp-servers/feature-flags": [
+      "__tests__",
       "pyproject.toml",
       "run_search_v2_scenario.py",
       "server.py",
       "uv.lock"
+    ],
+    "mcp-servers/feature-flags/__tests__": [
+      "conftest.py",
+      "test_server.py"
     ],
     "mcp-servers/search-docs": [
       "pyproject.toml",
@@ -512,9 +588,8 @@
     ],
     "docs-archived-2026-06-07": [
       "FINDINGS.md",
-      "docs-report.md",
-      "report.md"
+      "docs-report.md"
     ]
   },
-  "last_updated": "2026-06-07T14:34:12.456719+00:00"
+  "last_updated": "2026-06-07T15:31:51.317309+00:00"
 }

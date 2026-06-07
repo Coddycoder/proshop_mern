@@ -14,7 +14,7 @@ This is the Stage 3 value-add aggregation. It does **not** re-run security/perf/
 | PostToolUse + SessionStart hooks | `.claude/settings.local.json` |
 | New docs layers | `docs/README.md`, `docs/architecture/overview.md`, `docs/specs/×4`, `docs/adr/×7` |
 | CLAUDE.md sections | "⭐ START HERE" + "⭐ Keeping project-index.json current" + port fix (:5000→:5001) |
-| Archive | `docs-archived-2026-06-07/` (FINDINGS.md, report.md, docs-report.md) |
+| Archive | `docs-archived-2026-06-07/` (FINDINGS.md, docs-report.md) — root `report.md` kept (active work journal) |
 
 ## Module specs (Phase 3 — 4-step reverse engineering)
 
@@ -45,7 +45,7 @@ These came out of the per-module reverse engineering — candidates for a future
 
 ## Docs audit outcome (Phase 1.5)
 
-✅ 20 · 🔄 5 (TODO-marked in place) · 📦 3 (archived) · ❌ 0. The live `docs/project-data/` RAG corpus + `docs/chunks.jsonl` were **kept in place** (moving them would break `rag/ingest.py` + the search-docs MCP). Full table: [`docs-audit.md`](docs-audit.md).
+✅ 21 · 🔄 5 (TODO-marked in place) · 📦 2 (archived) · ❌ 0. The live `docs/project-data/` RAG corpus + `docs/chunks.jsonl` were **kept in place** (moving them would break `rag/ingest.py` + the search-docs MCP). Full table: [`docs-audit.md`](docs-audit.md).
 
 ## Follow-ups
 

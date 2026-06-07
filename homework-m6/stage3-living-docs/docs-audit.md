@@ -51,23 +51,23 @@
 | `DESIGN.md` (386) | design system | ✅ | M4 visual language; CLAUDE.md names it the UI single-source-of-truth. | Keep at root; link from `docs/README.md` |
 | `CLAUDE.md` (140) | agent rules | 🔄 | Accurate except the dev port: says backend `:5000` / proxy `:5000`, but `frontend/package.json` proxy = **`:5001`**. | Edit in Phase 5 (add 2 sections + fix port note) |
 | `FINDINGS.md` (9-row table) | earlier audit | 📦 | Quality review from an earlier module; references fix `b7d6b09` (calcPrices, already applied). Superseded by Stage 1 `synthesis.md` (which re-found #3/#4/#6). Historical lineage. | **Archive** (synthesis.md is the live successor) |
-| `report.md` (562, root) | session log | 📦 | Russian cross-module work journal (env, CLAUDE.md, README, M3…). Personal log, not code docs. | **Archive** |
+| `report.md` (562, root) | work journal | ✅ | Active cross-module work journal — every module (M3-M6) appends its results here (M6 section added during this audit). Reclassified 📦→✅: a living doc, not a historical artifact. | **Keep at root** |
 | `frontend/README.md` (68) | CRA scaffold | ✅ | Default Create-React-App readme. Out of scope. | Leave untouched |
 
-**loose subtotal:** ✅ 5 · 🔄 2 · 📦 3 · ❌ 0
+**loose subtotal:** ✅ 6 · 🔄 2 · 📦 2 · ❌ 0
 
 ---
 
 ## Summary
 
-- ✅ Keep / carry: **20** items
+- ✅ Keep / carry: **21** items
 - 🔄 Carry + TODO markers: **5** items (`project-data/architecture.md`, `project-data/api/uploads.md`, `project-data/runbooks/feature-flag-toggle.md`, `docs/architecture.md`, `CLAUDE.md`)
-- 📦 Archive (historical): **3** items (`FINDINGS.md`, `report.md`, `docs/report.md`)
+- 📦 Archive (historical): **2** items (`FINDINGS.md`, `docs/report.md`)
 - ❌ Archive (stale): **0**
 
 **Total reviewed:** 28 entries (folders counted once; 59 files).
 
-Only **3 loose historical files** are archived. The entire `docs/project-data/` corpus and `docs/chunks.jsonl` stay in place — they are live RAG infrastructure and verified accurate. This is the "don't trash valid docs" principle: a blind `git mv docs/ docs-archived/` would have broken the search-docs MCP and the RAG ingest.
+Only **2 loose historical files** are archived (`FINDINGS.md`, `docs/report.md`); root `report.md` was first archived then reclassified ✅ and kept — it's the active M3-M6 work journal. The entire `docs/project-data/` corpus and `docs/chunks.jsonl` stay in place — they are live RAG infrastructure and verified accurate. This is the "don't trash valid docs" principle: a blind `git mv docs/ docs-archived/` would have broken the search-docs MCP and the RAG ingest.
 
 ## Cross-references to preserve
 

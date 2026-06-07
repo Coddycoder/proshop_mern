@@ -560,3 +560,55 @@ Constraint в промте — лишь третий, рекомендатель
 ### Артефакты и статус
 
 `homework/M5/`: `wf1-manual-trigger.json`, `wf2-scheduled-monitor.json`, `simulate_wf1.py`, `simulate_wf2.py`, `logs.json`, `docker-compose.yml`, `trace-wf1.png` (+ `trace-wf1-canvas.png`), `trace-wf2-toggle.png`, детальный `README.md`. **Скринкаст опущен осознанно** — сквозной цикл доказан трейсами выше (reasoning агента WF1 + Telegram-цикл WF2).
+
+---
+
+## M6
+
+«Агент-Контролёр» — 4 стейджа на этом форке через Claude Code sub-agents. Сабмишн целиком — в [`homework-m6/`](./homework-m6/). 5 mate-агентов скопированы в `.claude/agents/` (security / performance / architecture / legacy-auditor / test-writer).
+
+### Stage 1 — Multi-Agent Code Review
+
+- 3 специализированных sub-agent'а (security / performance / architecture) прогнаны по всему репо через Agent tool. Каждый → `*-findings.jsonl` + `*-review.md` в [`homework-m6/stage1-code-review/`](./homework-m6/stage1-code-review/).
+- security-mate: **19** findings (6 HIGH), performance-mate: **9** (3 HIGH), architecture-mate: **10** (1 C1) + 2 ADR-драфта (ADR-006 `features.json` shared store, ADR-007 Auto-Pilot pipeline).
+- Сам собрал [`synthesis.md`](./homework-m6/stage1-code-review/synthesis.md): дедуп cross-mate, группировка по severity, **Top-3 для Stage 2**, оценка токенов (~284k output на трёх агентов).
+
+### Stage 2 — Fix Top-3 (safe-refactor recipe)
+
+- Characterization-тесты написаны **ДО** фиксов (отдельный `test:` коммит раньше fix-коммитов), `node:test` без БД и новых зависимостей — мок `req/res/next` + monkey-patch Mongoose-моделей.
+- Top-3 (все HIGH, backend, self-contained):
+  1. **IDOR `getOrderById`** (`orderController.js:77`) → ownership-guard, чужой заказ теперь `403`.
+  2. **`getUsers` утечка bcrypt-хэшей** (`userController.js:111`) → `.select('-password')`.
+  3. **`updateOrderToPaid` доверие клиенту** (`orderController.js:94`) → ownership + валидация payload (no-crash на missing `payer`) + `status==COMPLETED` + идемпотентность.
+- **12/12** тестов зелёные. Целевые тесты переписаны под новое поведение (intentional behavior change), контрольные остались зелёными. Каждый fix — `fix(...)` коммит < 200 строк, без новых зависимостей. 3 × `fix-N.md`.
+
+### Stage 3 — Legacy Audit + Living Docs (`legacy-auditor-mate`)
+
+- Вошёл в роль `legacy-auditor-mate` в главной сессии (**НЕ** через Task — orchestrator'у нужен Task для дочерних спавнов). Plan-mode: Phase 1 discovery → 1.5 docs-audit → 2 plan → **approval** → execute Phase 3-5.
+- **docs-audit:** 21 ✅ / 5 🔄 / 2 📦. Ключевое: `docs/project-data/` (RAG-корпус) + `docs/chunks.jsonl` (читается `rag/ingest.py:27`) — **живая инфраструктура**, не архивировал; реструктуризация аддитивная. Слепой `git mv docs/` сломал бы search-docs MCP.
+- **Phase 3:** 4-step reverse engineering (sub-агентами) → 4 спека в [`docs/specs/`](./docs/specs/) (feature-flags MCP, search-docs MCP, RAG, feature-flags backend; по 6 секций, 14-16 edge cases, mermaid).
+- **Phase 4-5:** [`project-index.json`](./project-index.json) (6 subprojects, 9 hard_rules, 8 ai_routing, дерево depth-4); `docs/{README, architecture/overview, adr/}` (5 ADR перенесены + ADR-006/007 новые); TODO(audit)-маркеры на 3 расходящихся файла (upload-auth, userModel double-hash, feature-flag-toggle runbook); `update_project_index.py` (WATCH_PATHS адаптированы) + PostToolUse/SessionStart hook (проверен, [`hook-demo.txt`](./homework-m6/stage3-living-docs/hook-demo.txt)); 2 секции в `CLAUDE.md` (START HERE + keep-index) + фикс порта `:5000→:5001`.
+
+### Stage 4 — Tests Agent (`test-writer-mate`)
+
+- Отдельный write-агент `test-writer-mate` (review-агенты тесты не пишут) на 2 сервисах из своего кода, по Stage-3 спекам:
+  - **feature-flags MCP** (`mcp-servers/feature-flags/server.py`): 14 тестов, **89%** coverage — tools + helpers, monkeypatch `FEATURES_PATH` на temp-файл (реальный `features.json` не тронут).
+  - **RAG** (`rag/query.py`): 17 тестов, **75%** coverage — `search` / `format_result` / `get_model` с мок-моделью и мок-Qdrant (без загрузки модели и live-вектора).
+- **31/31** проходят (`pytest` через `uv`). Value-ассерты, 4 типа тестов, прод-код не тронут. Непокрытое — только CLI `main()`. Отчёт: [`coverage-report.txt`](./homework-m6/stage4-tests-agent/coverage-report.txt).
+
+### Git
+
+Вся работа на ветке `feature/m6-agent-controller` (7 коммитов), затем squash в `master` + push (`8eff0da`). Ветку в origin не пушил (по workflow — только сквошнутый результат).
+
+### Что было сложно
+
+- **`@mcp.tool` и тестируемость:** проверил интроспекцией — в этой версии FastMCP декоратор оставляет функции обычными callable'ами (`set_feature_state(...)` зовётся напрямую), `FEATURES_PATH` читается из env на импорте → в тестах monkeypatch атрибута модуля.
+- **`update_project_index.py` висит на stdin** при ручном запуске без ввода (`json.load(sys.stdin)` блокируется на non-tty) — standalone надо звать `... < /dev/null`; под реальным hook'ом Claude Code сам отдаёт payload в stdin, ок.
+- **Классификация `report.md`:** сначала ошибочно отнёс этот журнал к историческим (📦) и заархивировал — вернул в корень, т.к. это активный кросс-модульный журнал (сюда пишется каждый модуль, включая этот раздел).
+- **Скриншоты** (`hook-screenshot.png`, `coverage-report.png`): среда headless — вместо PNG текстовый вывод (`hook-demo.txt`, `coverage-report.txt`); оба пункта опциональны/заменяемы.
+
+### Всплыло, но не чинил (кандидаты на след. итерацию, в `stage3-synthesis.md`)
+
+- proto-pollution-ish bracket-доступ `features[req.params.name]` в `getFeatureFlagByName`;
+- lost-update гонка в feature-flags MCP (read-modify-write без локов);
+- неаутентифицированный `POST /api/upload`, публичный `GET /api/feature-flags`, no rate-limit на login, CVE в зависимостях (всё в `synthesis.md`).
