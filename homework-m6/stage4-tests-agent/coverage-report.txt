@@ -1,0 +1,77 @@
+M6 Stage 4 — test run + coverage (generated 2026-06-07 16:52)
+Runner: pytest via uv (each service in its own .venv). 31 tests, 0 failures.
+
+############################################################
+# SERVICE 1 — feature-flags MCP (mcp-servers/feature-flags/server.py)
+############################################################
+============================= test session starts ==============================
+platform darwin -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- /Users/coddy/.cache/uv/builds-v0/.tmp5vGElj/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/coddy/Projects/hss/ai-course/proshop_mern/mcp-servers/feature-flags
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.13.0
+collecting ... collected 14 items
+
+__tests__/test_server.py::test_list_features_reports_count_and_known_flag_summary PASSED [  7%]
+__tests__/test_server.py::test_get_feature_info_returns_full_record_with_resolved_dependency_status PASSED [ 14%]
+__tests__/test_server.py::test_get_feature_info_unknown_id_returns_feature_not_found_and_echoes_id PASSED [ 21%]
+__tests__/test_server.py::test_set_feature_state_disabled_forces_traffic_zero_and_persists PASSED [ 28%]
+__tests__/test_server.py::test_set_feature_state_enabled_blocked_by_disabled_dependency_leaves_file_unchanged PASSED [ 35%]
+__tests__/test_server.py::test_set_feature_state_enabled_with_testing_dependency_succeeds_with_warning PASSED [ 42%]
+__tests__/test_server.py::test_set_feature_state_testing_resets_zero_traffic_to_canary_ten PASSED [ 50%]
+__tests__/test_server.py::test_set_feature_state_testing_preserves_in_band_traffic PASSED [ 57%]
+__tests__/test_server.py::test_set_feature_state_rejects_lowercase_state_case_sensitively PASSED [ 64%]
+__tests__/test_server.py::test_adjust_traffic_rollout_sets_mid_value_with_null_hint PASSED [ 71%]
+__tests__/test_server.py::test_adjust_traffic_rollout_rail_values_emit_nudge_hint PASSED [ 78%]
+__tests__/test_server.py::test_adjust_traffic_rollout_rejected_on_non_testing_flag PASSED [ 85%]
+__tests__/test_server.py::test_adjust_traffic_rollout_rejects_out_of_range_and_boolean PASSED [ 92%]
+__tests__/test_server.py::test_successful_write_leaves_no_temp_file_and_valid_json PASSED [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.14.4-final-0 _______________
+
+Name        Stmts   Miss  Cover   Missing
+-----------------------------------------
+server.py     120     13    89%   39, 44, 235, 352, 410-433, 437
+-----------------------------------------
+TOTAL         120     13    89%
+============================== 14 passed in 0.03s ==============================
+
+############################################################
+# SERVICE 2 — RAG retrieval (rag/query.py)
+############################################################
+============================= test session starts ==============================
+platform darwin -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- /Users/coddy/.cache/uv/builds-v0/.tmpjnIdSJ/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/coddy/Projects/hss/ai-course/proshop_mern/rag
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.13.0
+collecting ... collected 17 items
+
+__tests__/test_query.py::test_format_result_renders_all_fields_with_4dp_score PASSED [  5%]
+__tests__/test_query.py::test_format_result_uses_dash_placeholder_when_no_parent_headings PASSED [ 11%]
+__tests__/test_query.py::test_format_result_joins_multi_level_parent_headings_with_arrow PASSED [ 17%]
+__tests__/test_query.py::test_format_result_handles_cyrillic_title_and_snippet PASSED [ 23%]
+__tests__/test_query.py::test_search_maps_payload_into_expected_result_dict PASSED [ 29%]
+__tests__/test_query.py::test_search_coerces_integer_score_to_float PASSED [ 35%]
+__tests__/test_query.py::test_search_truncates_long_snippet_to_240_plus_ellipsis PASSED [ 41%]
+__tests__/test_query.py::test_search_does_not_truncate_short_snippet PASSED [ 47%]
+__tests__/test_query.py::test_search_normalizes_newlines_to_spaces_in_snippet PASSED [ 52%]
+__tests__/test_query.py::test_search_forwards_top_k_as_qdrant_limit PASSED [ 58%]
+__tests__/test_query.py::test_search_builds_kind_filter_when_kind_given PASSED [ 64%]
+__tests__/test_query.py::test_search_passes_no_filter_when_kind_is_none PASSED [ 70%]
+__tests__/test_query.py::test_search_returns_empty_list_when_no_hits PASSED [ 76%]
+__tests__/test_query.py::test_search_applies_defaults_for_missing_payload_keys PASSED [ 82%]
+__tests__/test_query.py::test_search_treats_none_payload_as_empty_dict PASSED [ 88%]
+__tests__/test_query.py::test_search_encodes_query_with_normalization_flags PASSED [ 94%]
+__tests__/test_query.py::test_get_model_constructs_model_only_once_across_calls PASSED [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.14.4-final-0 _______________
+
+Name       Stmts   Miss  Cover   Missing
+----------------------------------------
+query.py      53     13    75%   101-118, 122
+----------------------------------------
+TOTAL         53     13    75%
+============================== 17 passed in 4.37s ==============================

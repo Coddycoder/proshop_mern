@@ -108,7 +108,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/users
 // @access  Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({})
+  // Strip password hashes from the response (fix M6-#2, SEC-04/A02).
+  // Mirrors getUserById, which already projects with .select('-password').
+  const users = await User.find({}).select('-password')
   res.json(users)
 })
 

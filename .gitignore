@@ -31,3 +31,8 @@ __pycache__/
 .venv/
 mcp-servers/**/.venv/
 tmp/
+
+# Python test artifacts (M6 Stage 4)
+.coverage
+.pytest_cache/
+__pycache__/

@@ -81,6 +81,16 @@ const getOrderById = asyncHandler(async (req, res) => {
   )
 
   if (order) {
+    // Ownership guard (fix M6-#1, SEC-02/A01 IDOR): a user may read only their
+    // own order; admins may read any. Without this any authenticated user could
+    // fetch any order by id.
+    if (
+      order.user._id.toString() !== req.user._id.toString() &&
+      !req.user.isAdmin
+    ) {
+      res.status(403)
+      throw new Error('Not authorized to view this order')
+    }
     res.json(order)
   } else {
     res.status(404)
@@ -94,23 +104,51 @@ const getOrderById = asyncHandler(async (req, res) => {
 const updateOrderToPaid = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
 
-  if (order) {
-    order.isPaid = true
-    order.paidAt = Date.now()
-    order.paymentResult = {
-      id: req.body.id,
-      status: req.body.status,
-      update_time: req.body.update_time,
-      email_address: req.body.payer.email_address,
-    }
-
-    const updatedOrder = await order.save()
-
-    res.json(updatedOrder)
-  } else {
+  if (!order) {
     res.status(404)
     throw new Error('Order not found')
   }
+
+  // Ownership guard (fix M6-#3, SEC-03/A01 IDOR): only the buyer or an admin may
+  // settle an order. Here order.user is the raw ObjectId ref (no populate).
+  if (
+    order.user.toString() !== req.user._id.toString() &&
+    !req.user.isAdmin
+  ) {
+    res.status(403)
+    throw new Error('Not authorized to update this order')
+  }
+
+  // Validate the client-supplied PayPal payload before trusting it
+  // (fix M6-#3, SEC-01/A08): never dereference req.body.payer blindly (was a
+  // 500 on malformed input), and only a COMPLETED capture flips isPaid.
+  // NOTE: this is shape + status validation, not a server-side capture
+  // verification against PayPal — see fix-3-*.md §residual risk.
+  const { id, status, update_time } = req.body || {}
+  const emailAddress = req.body && req.body.payer && req.body.payer.email_address
+  if (!id || status !== 'COMPLETED' || !emailAddress) {
+    res.status(400)
+    throw new Error('Invalid or incomplete payment result')
+  }
+
+  // Idempotency: don't re-stamp an already-paid order.
+  if (order.isPaid) {
+    res.json(order)
+    return
+  }
+
+  order.isPaid = true
+  order.paidAt = Date.now()
+  order.paymentResult = {
+    id,
+    status,
+    update_time,
+    email_address: emailAddress,
+  }
+
+  const updatedOrder = await order.save()
+
+  res.json(updatedOrder)
 })
 
 // @desc    Update order to delivered

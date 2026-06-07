@@ -1,0 +1,5 @@
+=== HOOK DEMO: create file in watched path, simulate PostToolUse payload ===
+[update-index hook] triggered by Write on backend/services/_hooktest.js
+[update-index hook] ✅ updated project-index.json (tree + last_updated)
+
+=== non-watched path (homework-m6) → hook should NOT bump ===
